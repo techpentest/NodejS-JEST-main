@@ -1,2 +1,1 @@
-# NodejS-JEST-main
-NodejS-JEST-main
+# Node js application with Jest js library
