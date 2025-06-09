@@ -2,7 +2,11 @@ pipeline {
     agent any
     
     tools {
-        nodejs 'nodejs18'
+        nodejs 'nodejs20'
+    }
+    
+    environment {
+        SCANNER_HOME = tool 'sonar-scanner'
     }
     
     stages {
@@ -14,25 +18,38 @@ pipeline {
         
          stage('NPM Install') {
             steps {
-                sh 'npm install'
+                     sh 'npm install'
             }
         }
         
          stage('NPM Test') {
             steps {
-                sh 'npm run test'
+                sh '''
+                chmod +x ./node_modules/.bin/jest
+                npm run test
+                '''
             }
         }
         
-        // stage('SonarQube Analysis') {
-	       // steps {
-        //         withSonarQubeEnv('sonarqube') {
-        //               sh ''' $SCANNER_HOME/bin/sonar-scanner -Dsonar.sources=. \
-        //                       -Dsonar.tests=. -Dsonar.test.inclusions=**/*.test.js \
-        //                       -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
-        //                   '''
-        //          }
-        //      }
-        //  }
+        stage('SonarQube Analysis') {
+	        steps {
+                withSonarQubeEnv('sonarqube') {
+                      sh ''' $SCANNER_HOME/bin/sonar-scanner -Dsonar.sources=. \
+                              -Dsonar.projectKey=nodejs-project1 \
+                              -Dsonar.tests=. -Dsonar.test.inclusions=**/*.test.js \
+                              -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
+                          '''
+                 }
+             }
+         }
+         
+         stage('Quality Gateway Check') {
+            steps {
+                timeout(time: 1, unit: 'HOURS') {
+                    waitForQualityGate abortPipeline: false,
+                    credentialsId: 'sonar-token'
+                }
+            }
+        }
     }
 }
